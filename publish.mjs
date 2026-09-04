@@ -55,9 +55,18 @@ async function main() {
   });
   console.log(`캐러셀 컨테이너: ${carouselId}`);
 
-  // 3) 발행
+  // 3) 처리 완료(FINISHED) 대기 후 발행 (인스타가 이미지 다운로드하는 시간 필요)
+  for (let i = 0; i < 12; i++) {
+    const r = await fetch(`${API}/${carouselId}?fields=status_code&access_token=${TOKEN}`);
+    const j = await r.json();
+    if (j.status_code === 'FINISHED') break;
+    console.log(`  처리 대기 중... (${j.status_code || '?'})`);
+    await new Promise(r => setTimeout(r, 4000));
+  }
   const { id: mediaId } = await post(`${API}/${IG_ID}/media_publish`, { creation_id: carouselId });
   console.log(`✅ 발행 완료: media id ${mediaId}`);
+  const { permalink } = await (await fetch(`${API}/${mediaId}?fields=permalink&access_token=${TOKEN}`)).json();
+  console.log(`🔗 ${permalink}`);
 
   // 4) 첫 댓글
   if (firstComment) {
