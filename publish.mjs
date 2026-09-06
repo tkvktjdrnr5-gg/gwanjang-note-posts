@@ -22,7 +22,12 @@ if (!slug) { console.error('사용법: node publish.mjs posts/<slug>'); process.
 
 const dir = path.join(process.cwd(), slug);
 const captionRaw = fs.readFileSync(path.join(dir, 'caption.txt'), 'utf8');
-const [caption, firstComment] = captionRaw.split('---FIRST_COMMENT---').map(s => s.trim());
+const [caption, afterCaption = ''] = captionRaw.split('---FIRST_COMMENT---').map(s => s.trim());
+// 첫 댓글은 이모지, 그 재댓글(---REPLY---)에 해시태그
+let firstComment = afterCaption, reply = '';
+if (afterCaption.includes('---REPLY---')) {
+  [firstComment, reply] = afterCaption.split('---REPLY---').map(s => s.trim());
+}
 
 const images = fs.readdirSync(dir)
   .filter(f => /^\d+\.png$/.test(f))
@@ -68,10 +73,14 @@ async function main() {
   const { permalink } = await (await fetch(`${API}/${mediaId}?fields=permalink&access_token=${TOKEN}`)).json();
   console.log(`🔗 ${permalink}`);
 
-  // 4) 첫 댓글
+  // 4) 첫 댓글(이모지) + 재댓글(해시태그)
   if (firstComment) {
     const { id: commentId } = await post(`${API}/${mediaId}/comments`, { message: firstComment });
     console.log(`💬 첫 댓글 등록: ${commentId}`);
+    if (reply) {
+      const { id: replyId } = await post(`${API}/${commentId}/replies`, { message: reply });
+      console.log(`  ↳ 재댓글(해시태그) 등록: ${replyId}`);
+    }
   }
 }
 
